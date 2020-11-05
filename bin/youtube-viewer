@@ -2911,6 +2911,11 @@ sub get_watched_videos_from_file {
     scalar {results => \%results, url => undef};
 }
 
+sub print_watched_videos_from_file {
+    my ($page) = @_;
+    print_videos(get_watched_videos_from_file($page));
+}
+
 sub get_local_playlist {
     my @file = $_[0];
     my ($page) = $_[1];
@@ -2927,9 +2932,7 @@ sub get_local_playlist {
         warn "Can't open file <<$local_playlist>> for reading: $!\n";
     }
 
-    @ids = reverse(@ids);
-
-    my $maxResults = $yv_obj->get_maxResults;
+    my $maxResults = 50; 
 
     if ($page >= 1 and scalar(@ids) >= $maxResults) {
 
@@ -2937,7 +2940,7 @@ sub get_local_playlist {
 
         if (!@ids) {
             warn_last_page();
-            return get_local_playlist($page - 1) if ($page > 1);
+            return get_local_playlist(@file, $page - 1) if ($page > 1);
         }
     }
 
@@ -2950,8 +2953,8 @@ sub get_local_playlist {
 
     $results{items}         = \@videos;
     $results{pageInfo}      = {resultsPerPage => scalar(@videos), totalResults => scalar(@videos)};
-    $results{nextPageToken} = sub { get_local_playlist($page + 1) };
-    $results{prevPageToken} = sub { get_local_playlist(($page > 1) ? ($page - 1) : do { warn_first_page(); 1 }) };
+    $results{nextPageToken} = sub { get_local_playlist(@file, $page + 1) };
+    $results{prevPageToken} = sub { get_local_playlist(@file, ($page > 1) ? ($page - 1) : do { warn_first_page(); 1 }) };
 
     scalar {results => \%results, url => undef};
 }
