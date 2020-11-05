@@ -1578,7 +1578,7 @@ sub parse_arguments {
 
         'fc|cf|file-channels'    => \$opt{channels_from_file},
         'wv|watched-videos'      => \$opt{watched_videos_from_file},
-        'local-playlist|lp=s'    => \$opt{local_playlist},
+        'lp|local-playlist=s'    => \$opt{local_playlist},
 
         'search-videos|search|sv!'     => \$opt{search_videos},
         'search-channels|channels|sc!' => \$opt{search_channels},
@@ -2916,28 +2916,107 @@ sub print_watched_videos_from_file {
     print_videos(get_watched_videos_from_file($page));
 }
 
+#sub get_local_playlist {
+#    my @file = $_[0];
+#    my $page = $_[1];
+#
+#    $page //= $yv_obj->get_page;
+#
+#    my $playlist_file = $local_playlists_dir."/".$file[0];
+#
+#    open(my $fh, '<', $playlist_file) or do {
+#        warn "Can't open file $playlist_file for reading: $!\n";
+#        return;
+#    };
+#    
+#    my @ids;
+#
+#    while (defined(my $id = <$fh>)) {
+#        push @ids, $id;
+#    }
+#
+#    close $fh;
+#
+#    my %seen;
+#
+#    @ids = reverse(@ids);
+#    @ids = grep { !$seen{$_}++ } @ids;
+#
+#    my $maxResults = $yv_obj->get_maxResults;
+#
+#    if ($page >= 1 and scalar(@ids) >= $maxResults) {
+#
+#        @ids = grep { defined } @ids[($page - 1) * $maxResults .. $page * $maxResults - 1];
+#
+#        if (!@ids) {
+#            warn_last_page();
+#            return get_local_playlist(@file, $page - 1) if ($page > 1);
+#        }
+#    }
+#
+#    my %results;
+#    my @videos;
+#
+#    foreach my $id (@ids) {
+#        push @videos, {id => {kind => "youtube#video", videoId => $id},};
+#    }
+#
+#    $results{items}         = \@videos;
+#    $results{pageInfo}      = {resultsPerPage => scalar(@videos), totalResults => scalar(@videos)};
+#    $results{nextPageToken} = sub { get_local_playlist(@file, $page + 1) };
+#    $results{prevPageToken} = sub { get_local_playlist(@file, ($page > 1) ? ($page - 1) : do { warn_first_page(); 1 }) };
+#
+#    scalar {results => \%results, url => undef};
+#}
+
 sub get_local_playlist {
-    my (@file, $page) = @_;
+    my @file = $_[0];
+    my ($page) = $_[1];
 
     $page //= $yv_obj->get_page;
-    
-    my $playlist_file = $local_playlists_dir."/".$file[0];
 
-    open(my $fh, '<', $playlist_file) or do {
-        warn "Can't open file <<$playlist_file>> for reading: $!\n";
-        return;
-    };
+    my @ids;
+    my $local_playlist = $local_playlists_dir."/".$file[0];
 
-    while (defined(my $line = <$fh>)) {
-        print $line;
+    if (open(my $fh, '<', $local_playlist)) {
+        chomp(@ids = <$fh>);
+        close $fh;
+    } else {
+        warn "Can't open file <<$local_playlist>> for reading: $!\n";
     }
 
-    close $fh;
+    @ids = reverse(@ids);
+
+    my $maxResults = $yv_obj->get_maxResults;
+
+    if ($page >= 1 and scalar(@ids) >= $maxResults) {
+
+        @ids = grep { defined } @ids[($page - 1) * $maxResults .. $page * $maxResults - 1];
+
+        if (!@ids) {
+            warn_last_page();
+            return get_local_playlist($page - 1) if ($page > 1);
+        }
+    }
+
+    my %results;
+    my @videos;
+
+    foreach my $id (@ids) {
+        push @videos, {id => {kind => "youtube#video", videoId => $id},};
+    }
+
+    $results{items}         = \@videos;
+    $results{pageInfo}      = {resultsPerPage => scalar(@videos), totalResults => scalar(@videos)};
+    $results{nextPageToken} = sub { get_local_playlist($page + 1) };
+    $results{prevPageToken} = sub { get_local_playlist(($page > 1) ? ($page - 1) : do { warn_first_page(); 1 }) };
+
+    scalar {results => \%results, url => undef};
 }
 
 sub print_local_playlist {
     my @file = @_;
-    get_local_playlist(@file);
+    print_videos(get_local_playlist(@file, 1));
 }
 
 sub print_channels_from_file {
