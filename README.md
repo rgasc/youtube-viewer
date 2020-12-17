@@ -1,7 +1,6 @@
 ## youtube-viewer
 
-A lightweight application for searching and playing videos from YouTube. Forked by rgasc with the
-purpose of adding a local playlist functionality.
+A lightweight application for searching and playing videos from YouTube.
 
 ### youtube-viewer
 
